@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('car_auctions', function (Blueprint $table) {
             $table->id();
+            $table->enum('status', ['open', 'closed'])->default('open');
             $table->string('name');
             $table->decimal('starting_price', 10, 2);
             $table->decimal('current_bid', 10, 2)->nullable();
@@ -28,5 +29,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('car_auctions');
+        /*Schema::table('car_auctions', function (Blueprint $table) {
+            $table->dropColumn('status');
+        });*/
     }
 };
