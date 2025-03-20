@@ -26,7 +26,12 @@ class AdminAuctionController extends Controller
             'end_time' => 'required|date'
         ]);
 
-        CarAuction::create($request->all());
+        CarAuction::create([
+            'name' => $request->name,
+            'starting_price' => $request->starting_price,
+            'current_bid' => 0, // La primera puja siempre es 0
+            'end_time' => $request->end_time,
+        ]);
 
         return redirect()->route('admin.auctions.index')->with('success', 'Subasta creada correctamente.');
     }
