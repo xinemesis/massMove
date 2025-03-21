@@ -1,71 +1,69 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\CarAuctionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminAuctionController;
+use App\Http\Controllers\CarAuctionApiController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-// RUTA PÚBLICA PARA MOSTRAR SUBASTAS (SIN AUTENTICACIÓN)
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+// 📌 Página principal (Pública)
+Route::get('/', fn() => Inertia::render('Welcome', [
+    'canLogin' => Route::has('login'),
+    'canRegister' => Route::has('register'),
+    'laravelVersion' => Application::VERSION,
+    'phpVersion' => PHP_VERSION,
+]))->name('home');
+
+// ✅ Grupo de rutas protegidas (Solo autenticados y verificados)
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    // 📌 Renderizar la lista de subastas en Inertia
+    Route::get('/auctions', fn() => Inertia::render('AuctionList'))->name('auctions.list');
+
+    // 📌 Renderizar la vista de detalle de subasta
+    Route::get('/auctions/{auction}', fn($auction) => Inertia::render('AuctionDetail', [
+        'auction' => $auction
+    ]))->name('auctions.detail');
+
+    // 📌 Perfil del usuario autenticado
+    Route::get('/profile', fn() => Inertia::render('Profile/Edit'))->name('profile.edit');
+
+    // 📌 Dashboard del usuario
+    Route::get('/dashboard', fn() => Inertia::render('Dashboard'))->name('dashboard');
+
+    // 📌 Administración de subastas
+    Route::middleware('auth')->prefix('admin')->group(function () {
+        Route::get('/', fn() => Inertia::render('Admin/Dashboard'))->name('admin.index');
+        Route::get('/auctions', fn() => Inertia::render('Admin/AuctionList'))->name('admin.auctions.index');
+        Route::get('/auctions/create', fn() => Inertia::render('Admin/CreateAuction'))->name('admin.auctions.create');
+        Route::get('/auctions/{auction}/edit', fn($auction) => Inertia::render('Admin/EditAuction', [
+            'auction' => $auction
+        ]))->name('admin.auctions.edit');
+    });
 });
 
-// AUTENTICACIÓN: VER PERFIL, ACTUALIZAR Y ELIMINAR CUENTA
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+// ✅ Rutas de API
 
-// DASHBOARD (SOLO USUARIOS AUTENTICADOS)
-Route::middleware(['auth', 'verified'])->get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->name('dashboard');
-
-// GRUPO DE RUTAS PARA ADMINISTRACIÓN (PROTEGIDAS CON `auth`)
-Route::middleware('auth')->prefix('admin')->group(function () {
-    Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
-    Route::resource('auctions', AdminAuctionController::class)->names('admin.auctions');
-});
-
-// RUTA PARA VER EL USUARIO AUTENTICADO (USADO EN VUE.JS)
-Route::middleware('auth:sanctum')->get('/user', function () {
-    return response()->json(Auth::user());
-});
-
-// GRUPO DE RUTAS API PARA SUBASTAS (SIN AUTENTICACIÓN)
 Route::prefix('api')->group(function () {
-    Route::get('/auctions', [CarAuctionController::class, 'index']);
-    Route::get('/auctions/{auction}', [CarAuctionController::class, 'show']);
+    // ✅ API para obtener todas las subastas
+    Route::get('/auctions', [CarAuctionApiController::class, 'index']);
+
+    // ✅ API para obtener detalles de una subasta
+    Route::get('/auctions/{auction}', [CarAuctionApiController::class, 'show']);
+
+    // ✅ API para realizar una puja (requiere autenticación)
+    Route::middleware(['auth:sanctum'])->put('/auctions/{auction}/bid', [CarAuctionApiController::class, 'placeBid']);
+
+    // ✅ API para administrar subastas (requiere autenticación)
+    Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+        Route::post('/auctions', [CarAuctionApiController::class, 'store']);
+        Route::put('/auctions/{auction}', [CarAuctionApiController::class, 'update']);
+        Route::delete('/auctions/{auction}', [CarAuctionApiController::class, 'destroy']);
+    });
 });
 
-// RUTAS PROTEGIDAS PARA OPERACIONES EN SUBASTAS (PUJAS Y ELIMINACIÓN)
-Route::middleware('auth:sanctum')->prefix('api')->group(function () {
-    Route::post('/auctions', [CarAuctionController::class, 'store']);
-    Route::put('/auctions/{auction}', [CarAuctionController::class, 'update']);
-    Route::delete('/auctions/{auction}', [CarAuctionController::class, 'destroy']);
-});
 
-// Ruta para mostrar la lista de subastas en la web
-Route::get('/auctions', [CarAuctionController::class, 'index'])->name('auctions.list');
-
-// EVENTO PARA PROBAR PUSHER
-/*use App\Events\TestPusherEvent;
-
-Route::get('/test-pusher', function () {
-    broadcast(new TestPusherEvent('¡Pusher está funcionando!'));
-    return response()->json(['message' => 'Evento enviado a Pusher']);
-});*/
-
-// RUTA DE AUTENTICACIÓN
+// ✅ Rutas de autenticación
 require __DIR__ . '/auth.php';

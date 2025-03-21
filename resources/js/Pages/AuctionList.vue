@@ -1,67 +1,73 @@
 <template>
-  <div class="container">
-    <h2 class="text-center my-4">Subastas en Tiempo Real</h2>
-    <table class="table table-bordered">
-      <thead class="table-dark">
-        <tr>
-          <th>Auto</th>
-          <th>Puja Actual</th>
-          <th>Tiempo Restante</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="car in cars" :key="car.id">
-          <td>{{ car.name }}</td>
-          <td>${{ car.current_bid }}</td>
-          <td>{{ calculateTimeLeft(car.end_time) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</template>
+    <div class="container">
+      <h2 class="text-center my-4">Subastas en Tiempo Real</h2>
+      <table class="table table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th>Auto</th>
+            <th>Puja Actual</th>
+            <th>Tiempo Restante</th>
+            <th>Pujar</th>
+            <th>Historial</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="car in auctions" :key="car.id">
+            <td>{{ car.name }}</td>
+            <td>${{ car.current_bid ?? 0 }}</td>
+            <td>{{ car.timeLeft ?? "Cargando..." }}</td>
+            <td>
+              <input v-model="car.newBid" type="number" class="form-control" placeholder="Ingrese su puja" />
+              <button class="btn btn-success mt-2" @click="placeBid(car.id, car.newBid)">Pujar</button>
+            </td>
+            <td>
+              <button class="btn btn-info" @click="openHistoryModal(car.id, fetchBidHistory)">Ver Historial</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+  
+      <!-- Modal de Historial de Pujas -->
+      <div class="modal fade" id="bidHistoryModal" tabindex="-1" aria-hidden="true" ref="modal">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Historial de Pujas</h5>
+              <button type="button" class="btn-close" @click="closeHistoryModal">X</button>
+            </div>
+            <div class="modal-body">
+              <ul class="list-group">
+                <li v-for="bid in bidHistory" :key="bid.id" class="list-group-item">
+                  {{ bid.user.name }} pujó ${{ bid.amount }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
   
   <script setup>
-import { ref, onMounted } from 'vue';
-
-const cars = ref([]);
-const userId = ref(null); // 🔹 Variable para almacenar el ID del usuario autenticado
-const calculateTimeLeft = (endTime) => {
-    const diff = new Date(endTime) - new Date();
-    return diff > 0 ? Math.floor(diff / 1000) + " segundos" : "Finalizado";
-};
-
-onMounted(async () => {
+  import AppLayout from '@/Layouts/AppLayout.vue';
+  import { onMounted, onUnmounted } from 'vue';
+  import { cars, fetchAuctions, placeBid, startCountdown, listenForBids, listenForNewAuctions } from '@/Services/auctionService';
+  import { bidHistory, fetchBidHistory } from '@/Services/bidService';
+  import { modal, openHistoryModal, closeHistoryModal } from '@/Services/modalService';
+  
+  onMounted(async () => {
     try {
-        // 🔹 Obtener el usuario autenticado
-        const userResponse = await fetch('http://127.0.0.1:8000/api/user', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-
-        if (userResponse.ok) {
-            const userData = await userResponse.json();
-            userId.value = userData.id;
-        }
-
-        // 🔹 Cargar las subastas desde la API
-        const response = await fetch('http://127.0.0.1:8000/api/auctions');
-        cars.value = await response.json();
-
-        // 🔹 Escuchar eventos en tiempo real para actualizar la puja
-        window.Echo.channel('auctions').listen('NewBidPlaced', (event) => {
-            const auction = cars.value.find(car => car.id === event.id);
-            if (auction) {
-                auction.current_bid = event.current_bid;
-            }
-        });
-
-        // 🔹 Escuchar notificaciones privadas para el usuario
-        if (userId.value) {
-            window.Echo.private(`user.${userId.value}`).notification((notification) => {
-                alert(notification.message);
-            });
-        }
+        await fetchAuctions();
+        startCountdown();
+        listenForBids();
+        listenForNewAuctions();
     } catch (error) {
-        console.error('Error al cargar datos:', error);
+        console.error("Error en AuctionList.vue:", error);
     }
 });
-</script>
+
+onUnmounted(() => {
+    if (intervalId) clearInterval(intervalId);
+});
+  </script>
+  

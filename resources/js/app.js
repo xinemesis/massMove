@@ -6,8 +6,8 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
-console.log("Pusher Key:", import.meta.env.VITE_PUSHER_APP_KEY);
-console.log("Pusher Cluster:", import.meta.env.VITE_PUSHER_APP_CLUSTER);
+//console.log("Pusher Key:", import.meta.env.VITE_PUSHER_APP_KEY);
+//console.log("Pusher Cluster:", import.meta.env.VITE_PUSHER_APP_CLUSTER);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

@@ -10,5 +10,5 @@ Artisan::command('inspire', function () {
 
 app()->booted(function () {
     $schedule = app(Schedule::class);
-    $schedule->command('auctions:close')->hourly();
+    $schedule->command('auctions:close')->everyMinute();
 });
