@@ -18,9 +18,8 @@
   
   <script setup>
   import { ref, onMounted } from 'vue';
-  import { usePage, useRouter } from '@inertiajs/vue3';
+  import { usePage, router } from '@inertiajs/vue3';
   
-  const router = useRouter();
   const page = usePage();
   const auctionId = page.props.auctionId; // 🔹 Obtener ID de la subasta
   const auction = ref({

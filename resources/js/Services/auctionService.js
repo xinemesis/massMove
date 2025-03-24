@@ -1,8 +1,12 @@
 import { ref } from 'vue';
+import { showNotification } from './notificationService';
 
 
 // 🔹 Estado global para subastas
 export const cars = ref([]);
+
+// 🔹 Estado global para el estado de carga
+export const loading = ref(true);
 
 
 // 🔹 Obtener subastas desde la API
@@ -16,38 +20,41 @@ export const fetchAuctions = async () => {
             timeLeft: calculateTimeLeft(car.end_time)
         }));
     } catch (error) {
-        console.error('Error al cargar subastas:', error);
+        showNotification("Error al cargar subastas.", "danger");
+        //console.error('Error al cargar subastas:', error);
+    } finally {
+        loading.value = false;
     }
 };
 
 
-// 🔹 Escuchar nuevas subastas en tiempo real con Pusher
+// 🔹 Escuchar nuevas subastas en tiempo real
 export const listenForNewAuctions = () => {
     window.Echo.channel('auctions').listen('NewAuctionCreated', (event) => {
-        console.log("Nueva subasta recibida:", event); // 🔹 Verificar si se recibe el evento
-
-        cars.value = [...cars.value, {
-            id: event.id,
-            name: event.name,
-            current_bid: event.current_bid,
-            end_time: event.end_time,
-            timeLeft: calculateTimeLeft(event.end_time)
-        }];
+        const newAuction = {
+            ...event,
+            timeLeft: calculateTimeLeft(event.end_time) // 🔹 Iniciar cuenta regresiva de inmediato
+        };
+        cars.value.push(newAuction);
     });
 };
 
 
 // 🔹 Obtener detalles de una subasta
 export const fetchAuctionDetails = async (auctionId) => {
+    /*if (!auctionId) {
+        console.error("Error: auctionId es undefined.");
+        return null;
+    }*/
+
     try {
         const response = await fetch(`/api/auctions/${auctionId}`);
-        const data = await response.json();
-        return {
-            ...data,
-            timeLeft: calculateTimeLeft(data.end_time)
-        };
+        //if (!response.ok) throw new Error("Error en la API");
+
+        const auction = await response.json(); // ✅ Extraemos los datos correctamente
+        return auction;
     } catch (error) {
-        console.error('Error al cargar detalles de la subasta:', error);
+        //console.error("Error al cargar detalles de la subasta:", error);
         return null;
     }
 };
@@ -77,13 +84,25 @@ export const startCountdown = () => {
     }, 1000);
 };
 
+// 🔹 Iniciar cuenta regresiva para una subasta específica
+export const startAuctionCountdown = (auction) => {
+    setInterval(() => {
+        auction.timeLeft = calculateTimeLeft(auction.end_time);
+    }, 1000);
+};
+
 
 // 🔹 Escuchar pujas en tiempo real con Pusher
-export const listenForBids = () => {
+export const listenForBids = (updateAuction = null) => {
     window.Echo.channel('auctions').listen('NewBidPlaced', (event) => {
         const auction = cars.value.find(car => car.id === event.id);
         if (auction) {
             auction.current_bid = event.current_bid;
+        }
+
+        // Si `updateAuction` es una función, actualizar la subasta específica
+        if (updateAuction) {
+            updateAuction(event);
         }
     });
 };
@@ -92,14 +111,14 @@ export const listenForBids = () => {
 // 🔹 Enviar una puja
 export const placeBid = async (auctionId, bidAmount) => {
     if (!bidAmount || bidAmount <= 0) {
-        alert("Ingrese una cantidad válida para pujar.");
+        showNotification("Ingrese una cantidad válida para pujar.", "warning");
         return;
     }
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
     try {
-        const response = await fetch(`/api/auctions/${auctionId}`, {
+        const response = await fetch(`/api/auctions/${auctionId}/bid`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -111,13 +130,15 @@ export const placeBid = async (auctionId, bidAmount) => {
         });
 
         const result = await response.json();
+        console.log("📡 Respuesta del servidor:", result);
 
         if (response.ok) {
-            alert("Puja realizada con éxito!");
+            showNotification("Puja realizada con éxito!", "success");
         } else {
-            alert("Error al realizar la puja: " + result.message);
+            showNotification("Error: " + result.message, "danger");
         }
     } catch (error) {
-        console.error("Error al pujar:", error);
+        showNotification("Error al realizar la puja.", "danger");
+        //console.error("Error al pujar:", error);
     }
 };

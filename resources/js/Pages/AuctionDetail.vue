@@ -34,19 +34,33 @@
   <script setup>
   import { ref, onMounted } from 'vue';
   import { usePage } from '@inertiajs/vue3';
-  import { fetchAuctionDetails, placeBid, listenForBids } from '@/Services/auctionService';
+  import { fetchAuctionDetails, startAuctionCountdown, placeBid, listenForBids } from '@/Services/auctionService';
   import { bidHistory, fetchBidHistory } from '@/Services/bidService';
   //import { fetchAuctionDetails, placeBid, bidHistory, fetchBidHistory, listenForBids } from '@/Services/auctionService';
   
   const page = usePage();
   const auction = ref(null);
+  const auctionId = ref(page.props.auctionId);
   const newBid = ref('');
+
+  // 🔹 Función para actualizar la subasta en tiempo real
+const updateAuction = (event) => {
+    if (auction.value.id === event.id) {
+        auction.value.current_bid = event.current_bid;
+    }
+};
   
   // 🔹 Cargar datos de la subasta
   onMounted(async () => {
-    auction.value = await fetchAuctionDetails(page.props.auctionId);
-    await fetchBidHistory(page.props.auctionId);
-    listenForBids();
+    try {
+      auction.value = await fetchAuctionDetails(auctionId.value);
+      await fetchBidHistory(page.props.auctionId);
+      startAuctionCountdown(auction.value);
+      listenForBids(updateAuction);
+    } catch (error) {
+      console.error(error);
+    }
+    
   });
   </script>
   

@@ -3,72 +3,60 @@
 namespace App\Http\Controllers;
 
 use App\Models\CarAuction;
+use App\Models\Bid;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Events\NewBidPlaced;
+use Inertia\Inertia;
 
-class CarAuctionApiController extends Controller
+class CarAuctionController extends Controller
 {
-    // ✅ Obtener todas las subastas en formato JSON
+    // 🔹 Mostrar la lista de subastas a los usuarios
     public function index()
     {
         return response()->json(CarAuction::all());
     }
 
-    // ✅ Obtener detalles de una subasta específica
+    // 🔹 Ver detalles de una subasta
     public function show(CarAuction $auction)
     {
         return response()->json($auction);
     }
 
-    // ✅ Guardar una nueva subasta (Solo Administradores)
-    public function store(Request $request)
+    // ✅ Obtener historial de pujas de una subasta
+    public function getBids(CarAuction $auction)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'starting_price' => 'required|numeric|min:1',
-            'end_time' => 'required|date|after:now',
-        ]);
-
-        $auction = CarAuction::create($request->all());
-
-        return response()->json([
-            'message' => 'Subasta creada con éxito',
-            'auction' => $auction
-        ]);
+        return response()->json($auction->bids()->with('user:id,name')->orderBy('amount', 'desc')->get());
     }
 
-    // ✅ Actualizar detalles de una subasta
-    public function update(Request $request, CarAuction $auction)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'starting_price' => 'required|numeric|min:1',
-        ]);
-
-        $auction->update($request->all());
-
-        return response()->json(['message' => 'Subasta actualizada con éxito']);
-    }
-
-    // ✅ Eliminar una subasta
-    public function destroy(CarAuction $auction)
-    {
-        $auction->delete();
-
-        return response()->json(['message' => 'Subasta eliminada']);
-    }
-
-    // ✅ Realizar una puja en la subasta
+    // 🔹 Función para colocar una puja
     public function placeBid(Request $request, CarAuction $auction)
     {
+        if (!Auth::check()) {
+            return response()->json(['error' => 'No autorizado'], 401);
+        }
+
         $request->validate([
-            'current_bid' => 'required|numeric|min:' . ($auction->current_bid),
+            'current_bid' => 'required|numeric|min:' . ($auction->current_bid + 1),
         ]);
 
-        $auction->update(['current_bid' => $request->current_bid]);
+        $bid = Bid::create([
+            'auction_id' => $auction->id,
+            'user_id' => Auth::id(),
+            'amount' => $request->current_bid
+        ]);
+
+        $auction->update([
+            'current_bid' => $request->current_bid,
+            'user_id' => Auth::id()
+        ]);
+
+        broadcast(new NewBidPlaced($auction))->toOthers();
 
         return response()->json([
             'message' => 'Puja realizada con éxito',
-            'auction' => $auction
+            'auction' => $auction,
+            'bid' => $bid
         ]);
     }
 }

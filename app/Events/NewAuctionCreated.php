@@ -29,8 +29,9 @@ class NewAuctionCreated implements ShouldBroadcastNow
         return [
             'id' => $this->auction->id,
             'name' => $this->auction->name,
-            'current_bid' => $this->auction->current_bid,
-            'end_time' => $this->auction->end_time
+            'starting_price' => $this->auction->starting_price,
+            'current_bid' => $this->auction->current_bid ?? 0,
+            'end_time' => $this->auction->end_time,
         ];
     }
 }

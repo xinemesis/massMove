@@ -10,4 +10,9 @@ class CarAuction extends Model
     use HasFactory;
 
     protected $fillable = ['name', 'starting_price', 'current_bid', 'end_time'];
+
+    public function bids()
+    {
+        return $this->hasMany(Bid::class, 'auction_id');
+    }
 }

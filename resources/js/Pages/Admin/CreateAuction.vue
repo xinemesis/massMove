@@ -22,9 +22,8 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 
-const router = useRouter();
 const auction = ref({
   name: '',
   starting_price: '',
@@ -49,7 +48,7 @@ const submitAuction = async () => {
 
     if (response.ok) {
       alert("Subasta creada con éxito!");
-      router.visit('/admin/auctions'); // 🔹 Redirigir a la lista de subastas
+      router.visit('/admin/auctions'); // ✅ Mantiene el uso correcto de router
     } else {
       alert("Error: " + result.message);
     }
