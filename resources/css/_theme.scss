@@ -1,0 +1,16 @@
+:root {
+    --bs-primary: #ff5733;
+    --bs-secondary: #6c757d;
+}
+
+[data-theme="dark"] {
+    --bs-primary: #ff4500;
+    --bs-secondary: #343a40;
+    --bs-body-bg: #222;
+    --bs-body-color: #ddd;
+}
+
+body {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}

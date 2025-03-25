@@ -1,7 +1,9 @@
-import '../css/app.css';
+import '../css/app.scss';
 import './bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -23,6 +25,11 @@ window.Echo = new Echo({
     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
     forceTLS: true,
     encrypted: true
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const theme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", theme);
 });
 
 createInertiaApp({
